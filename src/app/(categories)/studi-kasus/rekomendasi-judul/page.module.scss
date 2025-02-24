@@ -1,0 +1,126 @@
+/* src/app/(categories)/studi-kasus/rekomendasi-judul/page.module.scss */
+
+.container {
+  background-color: white;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.title {
+  color: #2c3e50;
+  border-bottom: 2px solid #3498db;
+  padding-bottom: 10px;
+}
+
+.section {
+  margin: 20px 0;
+  padding: 15px;
+  border-left: 4px solid #3498db;
+  background-color: #f8f9fa;
+}
+
+.promptContainer {
+  position: relative;
+  margin: 20px 0;
+}
+
+.copyButton {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 15px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.copyButton:hover {
+  background-color: #2980b9;
+}
+
+.copyButton.copied {
+  background-color: #27ae60;
+}
+
+.codeBlock {
+  background-color: #f8f9fa;
+  padding: 15px;
+  padding-top: 40px;
+  border-radius: 5px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  font-family: 'Consolas', monospace;
+  margin: 0;
+}
+
+.inputSection {
+  background-color: #fff3e0;
+  padding: 15px;
+  margin: 20px 0;
+  border-radius: 5px;
+  border-left: 4px solid #ff9800;
+}
+
+.inputForm {
+  margin-top: 15px;
+}
+
+.textInput {
+  width: 100%;
+  min-height: 100px;
+  margin: 10px 0;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: 'Consolas', monospace;
+}
+
+.generateButton {
+  background-color: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.generateButton:hover {
+  background-color: #219a52;
+}
+
+.workshopHeader {
+  text-align: center;
+  margin: 2rem 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.workshopHeader p {
+  margin: 0;
+  padding: 0;
+  font-size: 1.1rem;
+  color: #1e293b;
+  font-weight: 500;
+}
+
+.date {
+  margin: 8px 0;
+  padding: 4px 16px;
+  font-size: 0.9rem;
+  color: #2563eb;
+  display: inline-block;
+  border: 1px solid #2563eb;
+  border-radius: 20px;
+}
+
+.organizer {
+  margin: 8px 0 0 0;
+  padding: 0;
+  font-size: 0.95rem;
+  color: #64748b;
+  letter-spacing: 0.5px;
+}
