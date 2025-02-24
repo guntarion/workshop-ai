@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Plus, X } from 'lucide-react'; // Import icons for UI elements
+import { Plus, X } from 'lucide-react';
 
 // Define interfaces for type safety
 interface WorkflowStep {
@@ -30,6 +30,13 @@ interface Workflow {
   timestamp: Date;
 }
 
+interface StepSuggestion {
+  description: string;
+  inputRequirements: string;
+  expectedOutput: string;
+  dependencies: number[];
+}
+
 const StepByStepPage = () => {
   // State management
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
@@ -43,6 +50,10 @@ const StepByStepPage = () => {
   const [contextSubmitted, setContextSubmitted] = useState(false);
   const [isLoadingFeedback, setIsLoadingFeedback] = useState(false);
   const [streamingFeedback, setStreamingFeedback] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [stepSuggestions, setStepSuggestions] = useState<StepSuggestion[]>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [suggestionsStream, setSuggestionsStream] = useState('');
 
   // Function to submit initial context and goal
   const submitContext = () => {
@@ -108,6 +119,150 @@ const StepByStepPage = () => {
       finalGoal: currentWorkflow.finalGoal,
       steps: [],
       timestamp: new Date(),
+    });
+  };
+
+  const getSuggestions = async () => {
+    setIsLoadingSuggestions(true);
+    setSuggestionsStream(''); // Reset stream
+
+    try {
+      const response = await fetch('/api/aiApi/qwenAIApi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userPrompt: `As a workflow optimization expert, suggest a logical breakdown of steps for this goal:
+
+                      Context:
+                      "${currentWorkflow.context}"
+
+                      Final Goal:
+                      "${currentWorkflow.finalGoal}"
+
+                      Provide between 3-7 logical steps in Bahasa Indonesia. For each step, specify:
+                      1. Description of what needs to be done
+                      2. Required inputs
+                      3. Expected outputs
+                      4. Dependencies (which steps must be completed first)
+
+                      Format your response as:
+                      TAHAPAN YANG DISARANKAN:
+
+                      Tahap 1:
+                      Deskripsi: [deskripsi tahapan]
+                      Input: [input yang dibutuhkan]
+                      Output: [output yang diharapkan]
+                      Dependensi: [nomor tahap yang harus diselesaikan sebelumnya, atau "Tidak ada" jika ini tahap awal]
+
+                      Tahap 2:
+                      ...
+
+                      PENJELASAN ALUR:
+                      [Jelaskan secara singkat mengapa tahapan disusun dengan urutan seperti ini]`,
+          model: 'qwen-turbo',
+          temperature: 0.7,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to get suggestions');
+
+      const contentType = response.headers.get('content-type');
+      let completeSuggestions = '';
+
+      if (contentType && contentType.includes('text/event-stream')) {
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+
+        if (reader) {
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            const chunkText = decoder.decode(value);
+            const lines = chunkText.split('\n');
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  if (data.error) {
+                    const errorMessage = `\nError: ${data.error}`;
+                    setSuggestionsStream((prev) => prev + errorMessage);
+                    completeSuggestions += errorMessage;
+                  } else if (data.content) {
+                    setSuggestionsStream((prev) => prev + data.content);
+                    completeSuggestions += data.content;
+                  }
+                } catch (error) {
+                  console.error('Error parsing JSON from stream:', error);
+                }
+              }
+            }
+          }
+        }
+
+        // After streaming is complete, parse and set the suggestions
+        setStepSuggestions(parseStepSuggestions(completeSuggestions));
+      }
+    } catch (error) {
+      console.error('Error getting suggestions:', error);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+
+  // Helper function to parse AI response into structured suggestions
+  const parseStepSuggestions = (text: string): StepSuggestion[] => {
+    console.log('Raw text from AI:', text);
+
+    // First, let's extract just the steps section
+    const stepsSection = text.split('PENJELASAN ALUR:')[0].split('TAHAPAN YANG DISARANKAN:')[1]?.trim();
+    if (!stepsSection) return [];
+
+    // Split into individual steps
+    const steps = stepsSection.split(/Tahap \d+:/g).filter((step) => step.trim());
+    console.log('Steps split:', steps);
+
+    return steps.map((stepContent, index) => {
+      // Helper function to extract content between markers
+      const extractSection = (startMarker: string, endMarker: string): string => {
+        const startIndex = stepContent.indexOf(startMarker);
+        if (startIndex === -1) return '';
+
+        const contentStart = startIndex + startMarker.length;
+        const endIndex = endMarker ? stepContent.indexOf(endMarker, contentStart) : stepContent.length;
+
+        return endIndex === -1 ? stepContent.substring(contentStart).trim() : stepContent.substring(contentStart, endIndex).trim();
+      };
+
+      // Extract each section
+      const description = extractSection('Deskripsi:', 'Input:');
+      const input = extractSection('Input:', 'Output:');
+      const output = extractSection('Output:', 'Dependensi:');
+      const dependenciesText = extractSection('Dependensi:', '\n');
+
+      // Parse dependencies
+      const dependencies =
+        dependenciesText.toLowerCase() === 'tidak ada'
+          ? []
+          : dependenciesText
+              .split(',')
+              .map((d) => parseInt(d.trim()))
+              .filter((d) => !isNaN(d));
+
+      // For debugging
+      console.log(`Step ${index + 1} parsed content:`);
+      console.log('- Description:', description);
+      console.log('- Input:', input);
+      console.log('- Output:', output);
+      console.log('- Dependencies:', dependencies);
+
+      return {
+        description,
+        inputRequirements: input,
+        expectedOutput: output,
+        dependencies,
+      };
     });
   };
 
@@ -293,6 +448,78 @@ const StepByStepPage = () => {
             <Button onClick={submitContext} disabled={!currentWorkflow.context.trim() || !currentWorkflow.finalGoal.trim()}>
               Lanjut ke Penentuan Tahapan
             </Button>
+          </div>
+        </Card>
+      )}
+
+      {contextSubmitted && !showSuggestions && (
+        <Card className='p-6'>
+          <h2 className='text-xl font-semibold mb-4'>Ingin Melihat Saran Tahapan?</h2>
+          <div className='space-y-4'>
+            <p className='text-sm text-gray-600'>
+              AI dapat memberikan saran pemecahan tahapan berdasarkan konteks dan tujuan yang Anda definisikan. Anda tetap dapat memodifikasi atau
+              membuat tahapan Anda sendiri setelahnya.
+            </p>
+            <Button
+              onClick={async () => {
+                setShowSuggestions(true);
+                await getSuggestions();
+              }}
+              disabled={isLoadingSuggestions}
+            >
+              {isLoadingSuggestions ? 'Memuat Saran...' : 'Lihat Saran Tahapan'}
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {contextSubmitted && showSuggestions && (
+        <Card className='p-6'>
+          <h2 className='text-xl font-semibold mb-4'>Saran Tahapan dari AI</h2>
+          <div className='space-y-6'>
+            {/* Show streaming content while loading */}
+            {isLoadingSuggestions && (
+              <Alert>
+                <AlertDescription>
+                  <div className='whitespace-pre-wrap font-mono text-sm'>{suggestionsStream || 'Loading...'}</div>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Show structured suggestions after loading complete */}
+            {!isLoadingSuggestions && stepSuggestions.length > 0 && (
+              <>
+                {stepSuggestions.map((suggestion, index) => (
+                  <div key={index} className='border rounded-lg p-4'>
+                    <h3 className='text-lg font-medium mb-3'>Tahap {index + 1}</h3>
+                    <div className='space-y-3'>
+                      <div>
+                        <strong className='block text-sm'>Deskripsi:</strong>
+                        <p className='mt-1 text-sm'>{suggestion.description}</p>
+                      </div>
+                      <div>
+                        <strong className='block text-sm'>Input yang Dibutuhkan:</strong>
+                        <p className='mt-1 text-sm'>{suggestion.inputRequirements}</p>
+                      </div>
+                      <div>
+                        <strong className='block text-sm'>Output yang Diharapkan:</strong>
+                        <p className='mt-1 text-sm'>{suggestion.expectedOutput}</p>
+                      </div>
+                      <div>
+                        <strong className='block text-sm'>Dependensi:</strong>
+                        <p className='mt-1 text-sm'>
+                          {suggestion.dependencies.length > 0 ? `Tahap ${suggestion.dependencies.join(', ')}` : 'Tidak ada dependensi'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+
+            <div className='mt-6'>
+              <Button onClick={() => setShowSuggestions(false)}>Lanjut ke Pembuatan Tahapan</Button>
+            </div>
           </div>
         </Card>
       )}
