@@ -64,6 +64,11 @@ const HomePage: React.FC = () => {
                   Panduan Prompt Analisis Manfaat Finansial
                 </Link>
               </li>
+              <li className={styles.navItem}>
+                <Link href='/member/latihan/action-role' className={styles.navLink}>
+                  Latihan Role Assignment
+                </Link>
+              </li>
             </ul>
           ) : (
             <div className={styles.authButtons}>
