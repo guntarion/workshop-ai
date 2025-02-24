@@ -1,6 +1,5 @@
-// src/app/(categories)/studi-kasus/manfaat-finansial/page.tsx
-
 'use client';
+// src/app/(categories)/studi-kasus/manfaat-finansial/page.tsx
 
 import React, { useState } from 'react';
 import styles from './page.module.scss';

@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
-import { registerSchema } from '@/lib/auth';
-import type { RegisterInput } from '@/lib/auth';
+import { registerSchema } from '@/lib/validations/auth';
+import type { RegisterInput } from '@/lib/validations/auth';
 
 export default function RegisterPage() {
   const router = useRouter();

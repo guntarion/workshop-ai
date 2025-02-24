@@ -25,6 +25,8 @@ const HomePage: React.FC = () => {
           <div className='flex flex-col items-end'>
             <span className='text-sm font-medium text-gray-900'>{session.user?.name}</span>
             <span className='text-xs text-gray-500'>{session.user?.email}</span>
+            {/* Display role for debugging */}
+            <span className='text-xs text-blue-500'>Role: {session.user?.role || 'none'}</span>
           </div>
           <button onClick={handleSignOut} className='text-sm text-red-600 hover:text-red-700'>
             Sign out
@@ -34,6 +36,15 @@ const HomePage: React.FC = () => {
       <div className={styles.content}>
         <p className={styles.title}>Workshop Pengoptimalan AI</p>
         <p className={styles.date}>18-21 Februari 2025</p>
+        {session?.user?.role === 'admin' && (
+          // Admin link only shows if role is exactly 'admin'
+          <div className='mt-4 mb-4'>
+            <Link href='/admin' className='inline-block px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors'>
+              Admin Dashboard
+              <span className='ml-2 text-sm bg-white/20 px-2 py-0.5 rounded'>Admin Only</span>
+            </Link>
+          </div>
+        )}
         <div className={styles.divider}></div>
         <p className={styles.info}>Nusantara Power Services | Akhmad Guntar</p>
         <p className={styles.description}>

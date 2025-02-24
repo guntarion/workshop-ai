@@ -2,7 +2,7 @@
 // src/app/(categories)/studi-kasus/rekomendasi-judul/page.tsx
 
 import React, { useState } from 'react';
-import styles from './page.module.scss';
+import styles from './page.module.css';
 
 const RekomendasiJudulPage = () => {
   const [background, setBackground] = useState('');

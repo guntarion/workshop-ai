@@ -1,6 +1,7 @@
 // src/app/api/auth/register/route.ts
 import { NextResponse } from 'next/server';
-import { registerSchema, hashPassword } from '@/lib/auth';
+import { registerSchema } from '@/lib/validations/auth';
+import { hashPassword } from '@/lib/auth';
 import dbConnect from '@/lib/db';
 import User from '@/models/User';
 

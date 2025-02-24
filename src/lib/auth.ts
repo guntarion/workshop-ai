@@ -7,12 +7,10 @@ import clientPromise from './mongodb';
 import dbConnect from './db';
 import User from '../models/User';
 import bcrypt from 'bcryptjs';
-import { z } from 'zod';
+import { loginSchema } from './validations/auth';
 
-const loginSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-});
+// List of admin email addresses
+const ADMIN_EMAILS = ['guntarion@gmail.com'];
 
 export const authOptions: NextAuthOptions = {
   adapter: MongoDBAdapter(clientPromise),
@@ -69,19 +67,23 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async signIn({ user, account }) {
-      if (account?.provider === 'google') {
+      if (account?.provider === 'google' && user.email) {
         try {
           await dbConnect();
           // Check if user exists and has a role
           const dbUser = await User.findOne({ email: user.email });
+
           if (!dbUser) {
-            // Create new user with member role
+            // Create new user with appropriate role
             await User.create({
               email: user.email,
-              name: user.name,
-              image: user.image,
-              role: 'member',
+              name: user.name || '',
+              image: user.image || undefined,
+              role: ADMIN_EMAILS.includes(user.email) ? 'admin' : 'member',
             });
+          } else if (!dbUser.role) {
+            // Update existing user with role if missing
+            await User.updateOne({ _id: dbUser._id }, { $set: { role: ADMIN_EMAILS.includes(user.email) ? 'admin' : 'member' } });
           }
         } catch (error) {
           console.error('Error in signIn callback:', error);
@@ -89,10 +91,24 @@ export const authOptions: NextAuthOptions = {
       }
       return true;
     },
-    async jwt({ token, user, trigger, session }) {
+    async jwt({ token, user, account, trigger, session }) {
       if (user) {
-        token.role = user.role || 'member';
         token.id = user.id;
+
+        // For Google sign-in, fetch fresh user data to get the role
+        if (account?.provider === 'google') {
+          try {
+            await dbConnect();
+            const dbUser = await User.findOne({ email: user.email });
+            if (dbUser) {
+              token.role = dbUser.role;
+            }
+          } catch (error) {
+            console.error('Error fetching user role:', error);
+          }
+        } else {
+          token.role = user.role || 'member';
+        }
       }
       // Handle user updates
       if (trigger === 'update' && session) {
@@ -129,18 +145,3 @@ export const authOptions: NextAuthOptions = {
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 12);
 }
-
-export const registerSchema = z
-  .object({
-    name: z.string().min(2, 'Name must be at least 2 characters'),
-    email: z.string().email('Invalid email address'),
-    password: z.string().min(8, 'Password must be at least 8 characters'),
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ['confirmPassword'],
-  });
-
-export type RegisterInput = z.infer<typeof registerSchema>;
-export type LoginInput = z.infer<typeof loginSchema>;
