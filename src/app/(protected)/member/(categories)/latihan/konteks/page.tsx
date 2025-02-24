@@ -21,6 +21,7 @@ const KonteksPage = () => {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [currentPrompt, setCurrentPrompt] = useState('');
   const [isLoadingFeedback, setIsLoadingFeedback] = useState(false);
+  const [streamingFeedback, setStreamingFeedback] = useState('');
 
   // Function to add a new prompt version
   const addPromptVersion = () => {
@@ -40,6 +41,8 @@ const KonteksPage = () => {
   const getFeedback = async () => {
     if (!prompts.length) return;
     setIsLoadingFeedback(true);
+    // Reset streaming feedback
+    setStreamingFeedback('');
 
     try {
       const latestPrompt = prompts[prompts.length - 1];
@@ -61,15 +64,15 @@ const KonteksPage = () => {
                       ${latestPrompt.version > 1 ? '4. Evaluasi improvement dari versi sebelumnya dan beri selamat jika sudah bagus' : ''}
 
                       Format jawabanmu:
-                      Analisis Konteks:
+                      ANALISIS KONTEKS:
                       [tuliskan analisis]
 
-                      Pertanyaan Pendalaman:
+                      PERTANYAAN PENDALAMAN:
                       1. [pertanyaan 1]
                       2. [pertanyaan 2]
                       3. [pertanyaan 3]
 
-                      Saran Perbaikan:
+                      SARAN PERBAIKAN:
                       1. [saran 1]
                       2. [saran 2]
                       3. [saran 3]
@@ -77,7 +80,7 @@ const KonteksPage = () => {
                       ${
                         latestPrompt.version > 1
                           ? `
-                      Evaluasi Improvement:
+                      EVALUASI IMPROVEMENT:
                       [tuliskan evaluasi dan apresiasi jika ada improvement signifikan]
                       `
                           : ''
@@ -89,42 +92,65 @@ const KonteksPage = () => {
 
       if (!response.ok) throw new Error('Failed to get feedback');
 
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No response body');
+      // Get the content-type header to determine if response is streaming
+      const contentType = response.headers.get('content-type');
+      let completeFeedback = ''; // Store complete feedback
 
-      let fullResponse = '';
-      const decoder = new TextDecoder();
+      if (contentType && contentType.includes('text/event-stream')) {
+        // Process streaming response
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        if (reader) {
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
+            const chunkText = decoder.decode(value);
+            // Split the chunk into lines
+            const lines = chunkText.split('\n');
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              fullResponse += data.content || '';
-            } catch (error) {
-              console.error('Error parsing chunk:', error);
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  // Parse the JSON data from the stream
+                  const data = JSON.parse(line.slice(6));
+                  if (data.error) {
+                    const errorMessage = `\nError: ${data.error}`;
+                    setStreamingFeedback((prev) => prev + errorMessage);
+                    completeFeedback += errorMessage;
+                  } else if (data.content) {
+                    setStreamingFeedback((prev) => prev + data.content);
+                    completeFeedback += data.content;
+                  }
+                } catch (error) {
+                  console.error('Error parsing JSON from stream:', error, 'Line:', line);
+                }
+              }
             }
           }
         }
-      }
 
-      // Update the prompts array with the feedback
-      const updatedPrompts = [...prompts];
-      updatedPrompts[updatedPrompts.length - 1].feedback = fullResponse;
-      setPrompts(updatedPrompts);
+        // After streaming is complete, update the prompts array with the complete feedback
+        const updatedPrompts = [...prompts];
+        updatedPrompts[updatedPrompts.length - 1].feedback = completeFeedback;
+        setPrompts(updatedPrompts);
+      } else {
+        // Handle non-streaming response (fallback)
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
+
+        const updatedPrompts = [...prompts];
+        updatedPrompts[updatedPrompts.length - 1].feedback = data.content || JSON.stringify(data);
+        setPrompts(updatedPrompts);
+      }
     } catch (error) {
       console.error('Error getting feedback:', error);
+      setStreamingFeedback(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsLoadingFeedback(false);
     }
   };
-
   return (
     <div className='container mx-auto py-8 space-y-6'>
       <h1 className='text-2xl font-bold mb-6'>Latihan Kejelasan Instruksi</h1>
@@ -179,10 +205,13 @@ const KonteksPage = () => {
               <pre className='whitespace-pre-wrap font-mono text-sm'>{prompt.content}</pre>
             </div>
 
-            {prompt.feedback && (
+            {/* Modified feedback display logic */}
+            {(prompt.feedback || (index === prompts.length - 1 && isLoadingFeedback)) && (
               <Alert>
                 <AlertDescription>
-                  <div className='whitespace-pre-wrap'>{prompt.feedback}</div>
+                  <div className='whitespace-pre-wrap'>
+                    {index === prompts.length - 1 && isLoadingFeedback ? streamingFeedback || 'Loading...' : prompt.feedback}
+                  </div>
                 </AlertDescription>
               </Alert>
             )}

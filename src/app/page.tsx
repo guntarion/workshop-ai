@@ -75,8 +75,13 @@ const HomePage: React.FC = () => {
                 </Link>
               </li>
               <li className={styles.navItem}>
+                <Link href='/member/latihan/stepbystep' className={styles.navLink}>
+                  Latihan Thinking Step By Step
+                </Link>
+              </li>
+              <li className={styles.navItem}>
                 <Link href='/member/latihan/action-role' className={styles.navLink}>
-                  Latihan Role Assignment
+                  Latihan Framework Prompt TRAS
                 </Link>
               </li>
             </ul>

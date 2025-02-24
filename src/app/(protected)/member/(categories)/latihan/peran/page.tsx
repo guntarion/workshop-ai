@@ -22,6 +22,7 @@ const RoleAssignmentPage = () => {
   const [roles, setRoles] = useState<AIRole[]>([]);
   const [isLoadingFeedback, setIsLoadingFeedback] = useState(false);
   const [contextSubmitted, setContextSubmitted] = useState(false);
+  const [streamingFeedback, setStreamingFeedback] = useState('');
 
   // Function to submit context
   const submitContext = () => {
@@ -48,6 +49,8 @@ const RoleAssignmentPage = () => {
   const getFeedback = async () => {
     if (!roles.length) return;
     setIsLoadingFeedback(true);
+    // Reset streaming feedback
+    setStreamingFeedback('');
 
     try {
       const latestRole = roles[roles.length - 1];
@@ -72,7 +75,7 @@ const RoleAssignmentPage = () => {
                       4. Gaya Komunikasi
 
                       Format your response as:
-                      Analisis per Kriteria:
+                      ANALISIS PER KRIETRIA:
                       1. Kejelasan Definisi Peran:
                          [analisis]
                       2. Relevansi Keahlian:
@@ -82,12 +85,12 @@ const RoleAssignmentPage = () => {
                       4. Gaya Komunikasi:
                          [analisis]
 
-                      Pertanyaan Pendalaman:
+                      PERTANYAAN PENDALAMAN:
                       1. [pertanyaan 1]
                       2. [pertanyaan 2]
                       3. [pertanyaan 3]
 
-                      Saran Perbaikan:
+                      SARAN PERBAIKAN:
                       1. [saran 1]
                       2. [saran 2]
                       3. [saran 3]
@@ -95,7 +98,7 @@ const RoleAssignmentPage = () => {
                       ${
                         latestRole.version > 1
                           ? `
-                      Evaluasi Improvement:
+                      EVALUASI IMPROVEMENT:
                       [analisis perbandingan dengan versi sebelumnya dan apresiasi jika ada improvement signifikan]
                       `
                           : ''
@@ -107,37 +110,62 @@ const RoleAssignmentPage = () => {
 
       if (!response.ok) throw new Error('Failed to get feedback');
 
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No response body');
+      // Get the content-type header to determine if response is streaming
+      const contentType = response.headers.get('content-type');
 
-      let fullResponse = '';
-      const decoder = new TextDecoder();
+      let completeFeedback = ''; // Add this at the start of streaming section
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      if (contentType && contentType.includes('text/event-stream')) {
+        // Process streaming response
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
+        if (reader) {
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              fullResponse += data.content || '';
-            } catch (error) {
-              console.error('Error parsing chunk:', error);
+            const chunkText = decoder.decode(value);
+            // Split the chunk into lines
+            const lines = chunkText.split('\n');
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  // Parse the JSON data from the stream
+                  const data = JSON.parse(line.slice(6));
+                  if (data.error) {
+                    const errorMessage = `\nError: ${data.error}`;
+                    setStreamingFeedback((prev) => prev + errorMessage);
+                    completeFeedback += errorMessage; // Add to complete feedback
+                  } else if (data.content) {
+                    setStreamingFeedback((prev) => prev + data.content);
+                    completeFeedback += data.content; // Add to complete feedback
+                  }
+                } catch (error) {
+                  console.error('Error parsing JSON from stream:', error, 'Line:', line);
+                }
+              }
             }
           }
         }
-      }
 
-      // Update the roles array with the feedback
-      const updatedRoles = [...roles];
-      updatedRoles[updatedRoles.length - 1].feedback = fullResponse;
-      setRoles(updatedRoles);
+        // After streaming is complete, update the roles array with the complete feedback
+        const updatedRoles = [...roles];
+        updatedRoles[updatedRoles.length - 1].feedback = completeFeedback; // Use completeFeedback instead
+        setRoles(updatedRoles);
+      } else {
+        // Handle non-streaming response (fallback)
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
+
+        const updatedRoles = [...roles];
+        updatedRoles[updatedRoles.length - 1].feedback = data.content || JSON.stringify(data);
+        setRoles(updatedRoles);
+      }
     } catch (error) {
       console.error('Error getting feedback:', error);
+      setStreamingFeedback(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsLoadingFeedback(false);
     }
@@ -256,6 +284,7 @@ const RoleAssignmentPage = () => {
       )}
 
       {/* Role History Section */}
+      {/* Role History Section */}
       {roles.map((role, index) => (
         <Card key={index} className='p-6'>
           <div className='space-y-4'>
@@ -268,10 +297,13 @@ const RoleAssignmentPage = () => {
               <pre className='whitespace-pre-wrap font-mono text-sm'>{role.roleDefinition}</pre>
             </div>
 
-            {role.feedback && (
+            {/* Modified feedback display logic */}
+            {(role.feedback || (index === roles.length - 1 && isLoadingFeedback)) && (
               <Alert>
                 <AlertDescription>
-                  <div className='whitespace-pre-wrap'>{role.feedback}</div>
+                  <div className='whitespace-pre-wrap'>
+                    {index === roles.length - 1 && isLoadingFeedback ? streamingFeedback || 'Loading...' : role.feedback}
+                  </div>
                 </AlertDescription>
               </Alert>
             )}
