@@ -65,6 +65,16 @@ const HomePage: React.FC = () => {
                 </Link>
               </li>
               <li className={styles.navItem}>
+                <Link href='/member/latihan/konteks' className={styles.navLink}>
+                  Latihan Memperjelas Instruksi
+                </Link>
+              </li>
+              <li className={styles.navItem}>
+                <Link href='/member/latihan/peran' className={styles.navLink}>
+                  Latihan Menanamkan Peran pada AI
+                </Link>
+              </li>
+              <li className={styles.navItem}>
                 <Link href='/member/latihan/action-role' className={styles.navLink}>
                   Latihan Role Assignment
                 </Link>
