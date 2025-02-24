@@ -68,12 +68,32 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    async signIn({ user, account }) {
+      if (account?.provider === 'google') {
+        try {
+          await dbConnect();
+          // Check if user exists and has a role
+          const dbUser = await User.findOne({ email: user.email });
+          if (!dbUser) {
+            // Create new user with member role
+            await User.create({
+              email: user.email,
+              name: user.name,
+              image: user.image,
+              role: 'member',
+            });
+          }
+        } catch (error) {
+          console.error('Error in signIn callback:', error);
+        }
+      }
+      return true;
+    },
     async jwt({ token, user, trigger, session }) {
       if (user) {
-        token.role = user.role;
+        token.role = user.role || 'member';
         token.id = user.id;
       }
-
       // Handle user updates
       if (trigger === 'update' && session) {
         token = { ...token, ...session };
@@ -87,6 +107,20 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id as string;
       }
       return session;
+    },
+    async redirect({ url, baseUrl }) {
+      // Allows relative URLs
+      if (url.startsWith('/')) {
+        // If coming from login, redirect to home first to ensure session is initialized
+        if (url.startsWith('/auth/login')) {
+          return baseUrl;
+        }
+        return `${baseUrl}${url}`;
+      }
+      // Allows callback URLs on the same origin
+      if (new URL(url).origin === baseUrl) return url;
+
+      return baseUrl;
     },
   },
 };

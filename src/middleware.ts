@@ -8,28 +8,28 @@ export default withAuth(
     const isAuthenticated = !!token;
     const isAdminRoute = req.nextUrl.pathname.startsWith('/admin');
     const isMemberRoute = req.nextUrl.pathname.startsWith('/member');
+    const isAuthRoute = req.nextUrl.pathname.startsWith('/auth/');
 
-    // Handle authenticated routes
+    // If trying to access auth routes while logged in, redirect to appropriate dashboard
+    if (isAuthRoute && isAuthenticated) {
+      if (token?.role === 'admin') {
+        return NextResponse.redirect(new URL('/admin', req.url));
+      }
+      return NextResponse.redirect(new URL('/', req.url));
+    }
+
+    // Handle protected routes access
     if (isAdminRoute || isMemberRoute) {
       if (!isAuthenticated) {
-        return NextResponse.redirect(new URL('/auth/login', req.url));
+        // Save the attempted URL to redirect back after login
+        const callbackUrl = encodeURIComponent(req.nextUrl.pathname);
+        return NextResponse.redirect(new URL(`/auth/login?callbackUrl=${callbackUrl}`, req.url));
       }
 
       // Check role permissions
       if (isAdminRoute && token?.role !== 'admin') {
         return NextResponse.redirect(new URL('/member', req.url));
       }
-
-      if (isMemberRoute && !['admin', 'member'].includes(token?.role as string)) {
-        return NextResponse.redirect(new URL('/auth/login', req.url));
-      }
-    }
-
-    // Allow access to auth routes when not authenticated
-    const isAuthRoute = req.nextUrl.pathname.startsWith('/auth/');
-    if (isAuthRoute && isAuthenticated) {
-      // Redirect authenticated users away from auth pages
-      return NextResponse.redirect(new URL('/', req.url));
     }
 
     return NextResponse.next();
@@ -43,5 +43,13 @@ export default withAuth(
 
 // Protect these routes
 export const config = {
-  matcher: ['/admin/:path*', '/member/:path*', '/auth/login', '/auth/register', '/auth/forgot-password'],
+  matcher: [
+    /*
+     * Match all paths except:
+     * 1. root path (/)
+     * 2. api routes (/api/)
+     * 3. static files (/_next/, /images/, /favicon.ico, etc.)
+     */
+    '/((?!api|_next|images|favicon.ico|auth|$).*)',
+  ],
 };

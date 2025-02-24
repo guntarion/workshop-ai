@@ -3,7 +3,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import styles from './HomePage.module.css';
 
 /**
@@ -14,8 +14,23 @@ import styles from './HomePage.module.css';
 const HomePage: React.FC = () => {
   const { data: session } = useSession();
 
+  const handleSignOut = () => {
+    signOut({ callbackUrl: '/' });
+  };
+
   return (
     <div className={styles.container}>
+      {session && (
+        <div className='fixed top-0 right-0 m-4 flex items-center gap-4 bg-white px-4 py-2 rounded-lg shadow-md'>
+          <div className='flex flex-col items-end'>
+            <span className='text-sm font-medium text-gray-900'>{session.user?.name}</span>
+            <span className='text-xs text-gray-500'>{session.user?.email}</span>
+          </div>
+          <button onClick={handleSignOut} className='text-sm text-red-600 hover:text-red-700'>
+            Sign out
+          </button>
+        </div>
+      )}
       <div className={styles.content}>
         <p className={styles.title}>Workshop Pengoptimalan AI</p>
         <p className={styles.date}>18-21 Februari 2025</p>

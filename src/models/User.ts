@@ -31,6 +31,7 @@ const userSchema = new Schema<IUser>(
       unique: true,
       lowercase: true,
       trim: true,
+      index: true, // This replaces the separate index declaration
       validate: {
         validator: function (v: string) {
           return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
@@ -74,8 +75,7 @@ const userSchema = new Schema<IUser>(
   }
 );
 
-// Create indexes
-userSchema.index({ email: 1 });
+// Create compound index for accounts
 userSchema.index({ 'accounts.provider': 1, 'accounts.providerAccountId': 1 });
 userSchema.index({ resetToken: 1 }, { sparse: true });
 
