@@ -3,6 +3,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useSession, signOut } from 'next-auth/react';
 import styles from './HomePage.module.css';
 
@@ -34,6 +35,14 @@ const HomePage: React.FC = () => {
         </div>
       )}
       <div className={styles.content}>
+        <Image
+          src="/images/logo-pln-nps.png"
+          alt="PLN NPS Logo"
+          width={200}
+          height={80}
+          className="mx-auto mb-6"
+          priority
+        />
         <p className={styles.title}>Workshop Pengoptimalan AI</p>
         <p className={styles.date}>25-28 Februari 2025</p>
         {session?.user?.role === 'admin' && (

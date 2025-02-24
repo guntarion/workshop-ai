@@ -4,6 +4,7 @@
 import { useState, Suspense } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -65,14 +66,22 @@ function LoginContent() {
     }
   };
 
-  const handleGoogleSignIn = () => {
-    signIn('google', { callbackUrl });
-  };
+  // const handleGoogleSignIn = () => {
+  //   signIn('google', { callbackUrl });
+  // };
 
   return (
     <div className='min-h-screen flex items-center justify-center bg-gray-50'>
       <div className='max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-md'>
         <div className='text-center'>
+          <Image
+            src="/images/logo-pln-nps.png"
+            alt="PLN NPS Logo"
+            width={200}
+            height={80}
+            className="mx-auto mb-6"
+            priority
+          />
           <h2 className='text-3xl font-bold'>Sign In</h2>
           <p className='mt-2 text-gray-600'>Welcome back!</p>
         </div>
@@ -116,7 +125,7 @@ function LoginContent() {
           </button>
         </form>
 
-        <div className='mt-6'>
+        {/* <div className='mt-6'>
           <div className='relative'>
             <div className='absolute inset-0 flex items-center'>
               <div className='w-full border-t border-gray-300' />
@@ -151,7 +160,7 @@ function LoginContent() {
             </svg>
             Sign in with Google
           </button>
-        </div>
+        </div> */}
 
         <div className='text-center mt-4'>
           <p className='text-sm text-gray-600'>

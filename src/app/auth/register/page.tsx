@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
@@ -53,6 +54,14 @@ export default function RegisterPage() {
     <div className='min-h-screen flex items-center justify-center bg-gray-50'>
       <div className='max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-md'>
         <div className='text-center'>
+          <Image
+            src="/images/logo-pln-nps.png"
+            alt="PLN NPS Logo"
+            width={200}
+            height={80}
+            className="mx-auto mb-6"
+            priority
+          />
           <h2 className='text-3xl font-bold'>Create Account</h2>
           <p className='mt-2 text-gray-600'>Sign up to get started</p>
         </div>
