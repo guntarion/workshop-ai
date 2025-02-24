@@ -4,6 +4,7 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import Link from 'next/link';
 
 export default function AdminDashboardPage() {
   const { data: session, status } = useSession();
@@ -39,7 +40,7 @@ export default function AdminDashboardPage() {
 
             <div className='border-t pt-6'>
               <h3 className='text-lg font-medium mb-4'>Admin Functions</h3>
-              <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+              <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
                 <div className='p-4 bg-blue-50 rounded-lg'>
                   <h4 className='font-medium'>User Management</h4>
                   <p className='text-sm text-gray-600'>Manage user accounts and roles</p>
@@ -51,6 +52,13 @@ export default function AdminDashboardPage() {
                 <div className='p-4 bg-purple-50 rounded-lg'>
                   <h4 className='font-medium'>Analytics</h4>
                   <p className='text-sm text-gray-600'>View site statistics and reports</p>
+                </div>
+                <div className='p-4 bg-yellow-50 rounded-lg'>
+                  <h4 className='font-medium'>QWEN AI Support</h4>
+                  <p className='text-sm text-gray-600'>Access the AI support page powered by QWEN model.</p>
+                  <Link href='/admin/ai/qwen' className='text-blue-600 hover:underline mt-2 inline-block'>
+                    Go to QWEN AI
+                  </Link>
                 </div>
               </div>
             </div>

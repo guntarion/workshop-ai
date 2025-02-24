@@ -67,7 +67,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
                     Admin Dashboard
                   </Link>
                 )}
-                <Link
+                {/* <Link
                   href='/member/studi-kasus/rekomendasi-judul'
                   className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
                     pathname?.includes('/rekomendasi-judul')
@@ -76,17 +76,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
                   }`}
                 >
                   Panduan Prompt Judul
-                </Link>
-                <Link
-                  href='/member/studi-kasus/manfaat-finansial'
-                  className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                    pathname?.includes('/manfaat-finansial')
-                      ? 'border-blue-500 text-gray-900'
-                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                  }`}
-                >
-                  Analisis Finansial
-                </Link>
+                </Link> */}
               </div>
             </div>
 
