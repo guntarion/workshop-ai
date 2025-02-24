@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useSession } from 'next-auth/react';
 
 interface AIRole {
   version: number;
@@ -23,6 +24,16 @@ const RoleAssignmentPage = () => {
   const [isLoadingFeedback, setIsLoadingFeedback] = useState(false);
   const [contextSubmitted, setContextSubmitted] = useState(false);
   const [streamingFeedback, setStreamingFeedback] = useState('');
+  const { data: session } = useSession();
+  const [emailStatus, setEmailStatus] = useState<{
+    loading: boolean;
+    success: boolean;
+    error: string | null;
+  }>({
+    loading: false,
+    success: false,
+    error: null
+  });
 
   // Function to submit context
   const submitContext = () => {
@@ -171,9 +182,240 @@ const RoleAssignmentPage = () => {
     }
   };
 
+  const handleSendEmail = async () => {
+    if (!roles.length) {
+      setEmailStatus({
+        loading: false,
+        success: false,
+        error: 'Harap buat setidaknya satu peran terlebih dahulu sebelum mengirim email.'
+      });
+      return;
+    }
+
+    if (!session?.user?.email) {
+      setEmailStatus({
+        loading: false,
+        success: false,
+        error: 'Email pengguna tidak ditemukan. Silakan login ulang.'
+      });
+      return;
+    }
+
+    setEmailStatus({
+      loading: true,
+      success: false,
+      error: null
+    });
+
+    try {
+      const response = await fetch('/api/email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: session.user.email,
+          subject: 'Workshop AI - Latihan Menanamkan Peran ke AI',
+          text: `Context: ${context}\n\n${roles
+            .map((role) => `Version ${role.version}:\n${role.roleDefinition}\n\nFeedback:\n${role.feedback || 'No feedback yet'}\n\n`)
+            .join('\n')}`,
+          html: `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <style>
+                body {
+                  font-family: Arial, sans-serif;
+                  line-height: 1.6;
+                  margin: 0;
+                  padding: 0;
+                  background-color: #f9fafb;
+                }
+                .container {
+                  max-width: 800px;
+                  margin: 20px auto;
+                  padding: 20px;
+                  background-color: #ffffff;
+                  border-radius: 8px;
+                  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                }
+                .header {
+                  text-align: center;
+                  margin-bottom: 30px;
+                  padding-bottom: 20px;
+                  border-bottom: 1px solid #e5e7eb;
+                }
+                h1 {
+                  color: #1a1a1a;
+                  font-size: 24px;
+                  margin-bottom: 10px;
+                }
+                .context {
+                  background-color: #f8f9fa;
+                  padding: 20px;
+                  border-radius: 6px;
+                  margin: 20px 0;
+                }
+                .version {
+                  margin: 30px 0;
+                  padding: 20px;
+                  border: 1px solid #e5e7eb;
+                  border-radius: 8px;
+                }
+                .version-header {
+                  background-color: #f8f9fa;
+                  padding: 10px 15px;
+                  border-radius: 6px;
+                  margin-bottom: 15px;
+                }
+                .timestamp {
+                  color: #666;
+                  font-size: 14px;
+                  margin-top: 5px;
+                }
+                .content-block {
+                  background-color: #ffffff;
+                  padding: 15px;
+                  border-radius: 6px;
+                  border: 1px solid #e5e7eb;
+                  margin: 10px 0;
+                  white-space: pre-wrap;
+                  font-family: monospace;
+                }
+                .footer {
+                  margin-top: 30px;
+                  padding-top: 20px;
+                  border-top: 1px solid #e5e7eb;
+                  text-align: center;
+                  color: #666;
+                  font-size: 14px;
+                }
+                .highlight {
+                  color: #0066cc;
+                  font-weight: bold;
+                }
+                h2, h3 {
+                  color: #2d3748;
+                  margin: 20px 0 10px 0;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">
+                  <h1>Latihan Menanamkan Peran ke AI</h1>
+                </div>
+                
+                <div class="context">
+                  <h2>Konteks Permasalahan:</h2>
+                  <div class="content-block">
+                    ${context}
+                  </div>
+                </div>
+
+                <div class="versions">
+                  ${roles
+                    .map(
+                      (role) => `
+                    <div class="version">
+                      <div class="version-header">
+                        <h3>Peran AI Versi ${role.version}</h3>
+                        <div class="timestamp">${role.timestamp.toLocaleString()}</div>
+                      </div>
+                      <div class="content-block">
+                        <h4>Definisi Peran:</h4>
+                        ${role.roleDefinition.replace(/\n/g, '<br>')}
+                      </div>
+                      ${
+                        role.feedback
+                          ? `
+                        <div class="content-block">
+                          <h4>Feedback AI:</h4>
+                          ${role.feedback.replace(/\n/g, '<br>')}
+                        </div>
+                      `
+                          : ''
+                      }
+                    </div>
+                  `
+                    )
+                    .join('')}
+                </div>
+                
+                <div class="footer">
+                  <p>
+                    <strong>Workshop Pengoptimalan AI</strong><br>
+                    25-28 Februari 2025<br>
+                    Nusantara Power Services
+                  </p>
+                  <p class="highlight">
+                    Akhmad Guntar<br>
+                    Workshop Facilitator
+                  </p>
+                </div>
+              </div>
+            </body>
+            </html>
+          `,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || data.message || 'Failed to send email');
+      }
+
+      setEmailStatus({
+        loading: false,
+        success: true,
+        error: null
+      });
+
+      setTimeout(() => {
+        setEmailStatus(prev => ({
+          ...prev,
+          success: false
+        }));
+      }, 3000);
+
+    } catch (error) {
+      console.error('Error sending email:', error);
+      setEmailStatus({
+        loading: false,
+        success: false,
+        error: error instanceof Error ? error.message : 'Gagal mengirim email. Silakan coba lagi.'
+      });
+    }
+  };
+
   return (
     <div className='container mx-auto py-8 space-y-6'>
-      <h1 className='text-2xl font-bold mb-6'>Latihan Menanamkan Peran ke AI</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className='text-2xl font-bold'>Latihan Menanamkan Peran ke AI</h1>
+        {roles.length > 0 && (
+          <Button
+            onClick={handleSendEmail}
+            disabled={emailStatus.loading}
+            className={`${emailStatus.loading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'} 
+              ${emailStatus.success ? 'bg-green-600' : ''} text-white px-4 py-2 rounded`}
+          >
+            {emailStatus.loading ? 'Mengirim...' : emailStatus.success ? 'Terkirim!' : 'Kirim ke Email'}
+          </Button>
+        )}
+      </div>
+
+      {emailStatus.error && (
+        <Alert className="bg-red-50 text-red-800 mb-4">
+          <AlertDescription>{emailStatus.error}</AlertDescription>
+        </Alert>
+      )}
+
+      {emailStatus.success && (
+        <Alert className="bg-green-50 text-green-800 mb-4">
+          <AlertDescription>Email berhasil dikirim ke {session?.user?.email}</AlertDescription>
+        </Alert>
+      )}
 
       {/* Context Guidelines */}
       <Alert className='bg-blue-50'>
@@ -283,7 +525,6 @@ const RoleAssignmentPage = () => {
         </Card>
       )}
 
-      {/* Role History Section */}
       {/* Role History Section */}
       {roles.map((role, index) => (
         <Card key={index} className='p-6'>

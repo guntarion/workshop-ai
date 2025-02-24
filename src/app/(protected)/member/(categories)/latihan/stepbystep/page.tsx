@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Mail } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 
 // Define interfaces for type safety
 interface WorkflowStep {
@@ -50,6 +51,16 @@ const StepByStepPage = () => {
   const [contextSubmitted, setContextSubmitted] = useState(false);
   const [isLoadingFeedback, setIsLoadingFeedback] = useState(false);
   const [streamingFeedback, setStreamingFeedback] = useState('');
+  const { data: session } = useSession();
+  const [emailStatus, setEmailStatus] = useState<{
+    loading: boolean;
+    success: boolean;
+    error: string | null;
+  }>({
+    loading: false,
+    success: false,
+    error: null
+  });
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [stepSuggestions, setStepSuggestions] = useState<StepSuggestion[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
@@ -400,9 +411,301 @@ const StepByStepPage = () => {
     }
   };
 
+  const handleSendEmail = async () => {
+    if (!workflows.length) {
+      setEmailStatus({
+        loading: false,
+        success: false,
+        error: 'Harap buat setidaknya satu workflow terlebih dahulu sebelum mengirim email.'
+      });
+      return;
+    }
+
+    if (!session?.user?.email) {
+      setEmailStatus({
+        loading: false,
+        success: false,
+        error: 'Email pengguna tidak ditemukan. Silakan login ulang.'
+      });
+      return;
+    }
+
+    setEmailStatus({
+      loading: true,
+      success: false,
+      error: null
+    });
+
+    try {
+      const response = await fetch('/api/email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: session.user.email,
+          subject: 'Workshop AI - Latihan Pemecahan Masalah Step-by-Step',
+          text: workflows
+            .map(
+              (workflow) => `
+Workflow Versi ${workflow.version}
+Timestamp: ${workflow.timestamp}
+
+KONTEKS:
+${workflow.context}
+
+HASIL AKHIR:
+${workflow.finalGoal}
+
+TAHAPAN:
+${workflow.steps
+  .map(
+    (step) => `
+Tahap ${step.stepNumber}:
+Deskripsi: ${step.description}
+Input: ${step.inputRequirements}
+Output: ${step.expectedOutput}
+Prompt: ${step.prompt}
+Dependensi: ${step.dependencies.length ? step.dependencies.join(', ') : 'Tidak ada'}
+`
+  )
+  .join('\n')}
+
+FEEDBACK:
+${workflow.overallFeedback || 'Belum ada feedback'}
+-------------------
+`
+            )
+            .join('\n\n'),
+          html: `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <style>
+                body {
+                  font-family: Arial, sans-serif;
+                  line-height: 1.6;
+                  margin: 0;
+                  padding: 0;
+                  background-color: #f9fafb;
+                }
+                .container {
+                  max-width: 800px;
+                  margin: 20px auto;
+                  padding: 20px;
+                  background-color: #ffffff;
+                  border-radius: 8px;
+                  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                }
+                .header {
+                  text-align: center;
+                  margin-bottom: 30px;
+                  padding-bottom: 20px;
+                  border-bottom: 1px solid #e5e7eb;
+                }
+                .workflow {
+                  margin: 30px 0;
+                  padding: 20px;
+                  border: 1px solid #e5e7eb;
+                  border-radius: 8px;
+                }
+                .version-header {
+                  background-color: #f8f9fa;
+                  padding: 15px;
+                  border-radius: 6px;
+                  margin-bottom: 20px;
+                }
+                .context-section {
+                  background-color: #f8f9fa;
+                  padding: 15px;
+                  border-radius: 6px;
+                  margin: 15px 0;
+                }
+                .step {
+                  border: 1px solid #e5e7eb;
+                  border-radius: 6px;
+                  padding: 15px;
+                  margin: 15px 0;
+                }
+                .step-header {
+                  background-color: #f8f9fa;
+                  padding: 10px;
+                  border-radius: 4px;
+                  margin-bottom: 10px;
+                }
+                .step-details {
+                  margin-left: 15px;
+                }
+                .feedback-section {
+                  background-color: #f8f9fa;
+                  padding: 15px;
+                  border-radius: 6px;
+                  margin-top: 20px;
+                }
+                .footer {
+                  margin-top: 30px;
+                  padding-top: 20px;
+                  border-top: 1px solid #e5e7eb;
+                  text-align: center;
+                  color: #666;
+                }
+                .timestamp {
+                  color: #666;
+                  font-size: 14px;
+                }
+                pre {
+                  white-space: pre-wrap;
+                  font-family: monospace;
+                }
+                h1, h2, h3, h4 {
+                  color: #2d3748;
+                  margin: 10px 0;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">
+                  <h1>Latihan Pemecahan Masalah Step-by-Step</h1>
+                </div>
+
+                ${workflows
+                  .map(
+                    (workflow) => `
+                  <div class="workflow">
+                    <div class="version-header">
+                      <h2>Workflow Versi ${workflow.version}</h2>
+                      <div class="timestamp">${workflow.timestamp.toLocaleString()}</div>
+                    </div>
+
+                    <div class="context-section">
+                      <h3>Konteks dan Tujuan</h3>
+                      <div>
+                        <strong>Konteks:</strong>
+                        <p>${workflow.context}</p>
+                      </div>
+                      <div>
+                        <strong>Hasil Akhir:</strong>
+                        <p>${workflow.finalGoal}</p>
+                      </div>
+                    </div>
+
+                    <div class="steps">
+                      <h3>Tahapan</h3>
+                      ${workflow.steps
+                        .map(
+                          (step) => `
+                        <div class="step">
+                          <div class="step-header">
+                            <h4>Tahap ${step.stepNumber}</h4>
+                            ${
+                              step.dependencies.length
+                                ? `<div class="dependencies">Dependensi: Tahap ${step.dependencies.join(', ')}</div>`
+                                : '<div class="dependencies">Tidak ada dependensi</div>'
+                            }
+                          </div>
+                          <div class="step-details">
+                            <div><strong>Deskripsi:</strong> <p>${step.description}</p></div>
+                            <div><strong>Input yang Dibutuhkan:</strong> <p>${step.inputRequirements}</p></div>
+                            <div><strong>Output yang Diharapkan:</strong> <p>${step.expectedOutput}</p></div>
+                            <div><strong>Prompt:</strong> <pre>${step.prompt}</pre></div>
+                          </div>
+                        </div>
+                      `
+                        )
+                        .join('')}
+                    </div>
+
+                    ${
+                      workflow.overallFeedback
+                        ? `
+                      <div class="feedback-section">
+                        <h3>Feedback AI</h3>
+                        <pre>${workflow.overallFeedback}</pre>
+                      </div>
+                    `
+                        : ''
+                    }
+                  </div>
+                `
+                  )
+                  .join('')}
+                
+                <div class="footer">
+                  <p>
+                    <strong>Workshop Pengoptimalan AI</strong><br>
+                    25-28 Februari 2025<br>
+                    Nusantara Power Services
+                  </p>
+                  <p style="color: #0066cc; font-weight: bold;">
+                    Akhmad Guntar<br>
+                    Workshop Facilitator
+                  </p>
+                </div>
+              </div>
+            </body>
+            </html>
+          `,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || data.message || 'Failed to send email');
+      }
+
+      setEmailStatus({
+        loading: false,
+        success: true,
+        error: null
+      });
+
+      setTimeout(() => {
+        setEmailStatus(prev => ({
+          ...prev,
+          success: false
+        }));
+      }, 3000);
+
+    } catch (error) {
+      console.error('Error sending email:', error);
+      setEmailStatus({
+        loading: false,
+        success: false,
+        error: error instanceof Error ? error.message : 'Gagal mengirim email. Silakan coba lagi.'
+      });
+    }
+  };
+
   return (
     <div className='container mx-auto py-8 space-y-6'>
-      <h1 className='text-2xl font-bold mb-6'>Latihan Pemecahan Masalah Step-by-Step</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className='text-2xl font-bold'>Latihan Pemecahan Masalah Step-by-Step</h1>
+        {workflows.length > 0 && (
+          <Button
+            onClick={handleSendEmail}
+            disabled={emailStatus.loading}
+            className={`${emailStatus.loading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'} 
+              ${emailStatus.success ? 'bg-green-600' : ''} text-white px-4 py-2 rounded flex items-center gap-2`}
+          >
+            <Mail className="h-4 w-4" />
+            {emailStatus.loading ? 'Mengirim...' : emailStatus.success ? 'Terkirim!' : 'Kirim ke Email'}
+          </Button>
+        )}
+      </div>
+
+      {emailStatus.error && (
+        <Alert className="bg-red-50 text-red-800 mb-4">
+          <AlertDescription>{emailStatus.error}</AlertDescription>
+        </Alert>
+      )}
+
+      {emailStatus.success && (
+        <Alert className="bg-green-50 text-green-800 mb-4">
+          <AlertDescription>Email berhasil dikirim ke {session?.user?.email}</AlertDescription>
+        </Alert>
+      )}
 
       {/* Guidelines Alert */}
       <Alert className='bg-blue-50'>

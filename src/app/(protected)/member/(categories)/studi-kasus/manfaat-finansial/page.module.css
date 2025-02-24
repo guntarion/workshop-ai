@@ -82,6 +82,7 @@
   resize: vertical;
   transition: border-color 0.2s, box-shadow 0.2s;
   background-color: white;
+  margin-top: 0.5rem;
 }
 
 .textInput:focus {
@@ -117,7 +118,7 @@
   justify-content: center;
   gap: 0.5rem;
   max-width: 200px;
-  margin: 0 auto;
+  margin: 1.5rem auto 0;
 }
 
 .generateButton:hover {
@@ -214,6 +215,7 @@
   border: 1px solid #e0e0e0;
   overflow-x: auto;
   margin-top: 1rem;
+  text-align: left;
 }
 
 .successMessage, .errorMessage {
