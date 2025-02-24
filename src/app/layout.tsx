@@ -6,8 +6,8 @@ import AuthProvider from '@/providers/AuthProvider';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
-  title: 'NextAuth Authentication System',
-  description: 'A secure authentication system with role-based access control',
+  title: 'Guntar AI',
+  description: 'Workshop Pengoptimalan AI',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

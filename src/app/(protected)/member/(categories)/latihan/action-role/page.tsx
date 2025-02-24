@@ -264,7 +264,7 @@ const RoleAssignmentPage = () => {
 
   return (
     <div className='container mx-auto py-8 space-y-6'>
-      <h1 className='text-2xl font-bold mb-6'>Role Assignment Practice</h1>
+      <h1 className='text-2xl font-bold mb-6'>TRAS Prompting Practice</h1>
 
       {/* Topic Input Section */}
       <Card className='p-6'>

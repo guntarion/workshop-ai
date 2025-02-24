@@ -35,7 +35,7 @@ const HomePage: React.FC = () => {
       )}
       <div className={styles.content}>
         <p className={styles.title}>Workshop Pengoptimalan AI</p>
-        <p className={styles.date}>18-21 Februari 2025</p>
+        <p className={styles.date}>25-28 Februari 2025</p>
         {session?.user?.role === 'admin' && (
           // Admin link only shows if role is exactly 'admin'
           <div className='mt-4 mb-4'>
